@@ -1,0 +1,1 @@
+# Hive-DDL-to-create-tables-in-Hive-Metastore
