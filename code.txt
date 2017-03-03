@@ -1,0 +1,411 @@
+#HIVE: CREATE MANAGED TABLES, EXTERNAL TABLES AND PARTITIONED TABLES USING DIFFERENT FILE_FORMATS
+##################################################################################################################################################################
+I) CREATE MANAGED TABLES FROM HIVE TABLE
+
+show create table device_text;
+
+A) STORED AS TEXTFILE:		
+
+create table d_text (
+device_num int,
+release_dt string,
+device_name string,
+device_type string)
+row format delimited fields terminated by ','
+stored as textfile;
+
+insert into table d_text
+select * from device_text;
+
+select * from d_text limit 2;
+dfs -ls /user/hive/warehouse/d_text;
+
+
+B) STORED AS SEQUENCEFILE:	
+
+create table d_seq (
+device_num int,
+release_dt string,
+device_name string,
+device_type string)
+row format delimited fields terminated by ','
+stored as sequencefile;
+
+insert into table d_seq
+select * from device_text;
+
+select * from d_seq limit 2;
+dfs -ls /user/hive/warehouse/d_seq;
+
+C) STORED AS PARQUETFILE:	
+
+create table d_par (
+device_num int,
+release_dt string,
+device_name string,
+device_type string)
+row format delimited fields terminated by ','
+stored as parquetfile;
+
+insert into table d_par
+select * from device_text;
+
+select * from d_par limit 2;
+dfs -ls /user/hive/warehouse/d_par;
+
+
+D) STORED AS AVRO:	
+
+1) METHOD 1:
+
+create table d_avro2 (
+device_num int,
+release_dt string,
+device_name string,
+device_type string)
+row format delimited 
+stored as avro
+tblproperties ('avro.schema.url'='hdfs:///user/training/device.avsc');
+
+insert into table d_avro2
+select * from device_text;
+
+select * from d_avro2 limit 2;
+dfs -ls /user/hive/warehouse/d_avro2;
+describe formatted d_avro2;
+
+
+2) METHOD 2:
+
+create table d_avro
+row format delimited fields terminated by ','
+stored as avro
+tblproperties ('avro.schema.literal'='{
+"type" : "record",
+"name" : "d_avro_schema",
+"doc" : "schema of d_avro",
+"fields" : [ {
+ "name" : "device_num",
+ "type" : ["int", "null"],
+ "columnName" : "device_num",
+ "sqlType" : "4"
+}, {
+ "name" : "release_dt",
+ "type" : ["string", "null"],
+ "columnName" : "release_dt",
+ "sqlType" : "12"
+}, {
+ "name" : "device_name",
+ "type" : ["string", "null"],
+ "columnName" : "device_name",
+ "sqlType" : "12"
+}, {
+ "name" : "device_type",
+ "type" : ["string", "null"],
+ "columnName" : "device_type",
+ "sqlType" : "12"
+} ],
+"tableName" : "d_avro"
+}
+');
+
+insert into d_avro
+select * from device_text;
+
+select * from d_avro limit 2;
+dfs -ls /user/hive/warehouse/d_avro;
+
+#################################################################################################################################################################
+II) CREATE EXTERNAL TABLES FROM HIVE TABLE
+
+A) STORED AS TEXTFILE:		
+
+create external table d_text_ex (
+device_num int,
+release_dt string,
+device_name string,
+device_type string)
+row format delimited fields terminated by ',' lines terminated by '\n'
+stored as textfile
+location 'hdfs:///user/hive/warehouse/device_text';
+
+
+B) STORED AS SEQUENCEFILE:	
+
+('d_seq' is a 'sequencefile')
+
+create external table d_seq_ex (
+device_num int,
+release_dt string,
+device_name string,
+device_type string)
+row format delimited fields terminated by ','
+stored as sequencefile
+location 'hdfs:///user/hive/warehouse/d_seq';
+
+select * from d_seq_ex;
+
+
+C) STORED AS PARQUETFILE:	
+
+('d_par' is a 'parquetfile')
+
+create external table d_par_ex (
+device_num int,
+release_dt string,
+device_name string,
+device_type string)
+row format delimited fields terminated by '|'
+stored as parquetfile
+location 'hdfs:///user/hive/warehouse/d_par';
+
+select * from d_par_ex;
+
+
+D) STORED AS AVRO:	
+
+('d_avro' is an 'AVRO' file)
+
+create external table d_avro_ex
+row format delimited fields terminated by '|'
+stored as avro
+location 'hdfs:///user/hive/warehouse/d_avro'
+tblproperties ('avro.schema.url'='hdfs:///user/training/device.avsc');
+
+select * from d_avro_ex;
+
+#################################################################################################################################################################
+III) HIVE PARTITIONING
+
+CREATE DATABASE database_name;
+SHOW DATABASES;
+USE database_name;
+DROP DATABASE database_name;
+
+1) CREATE MANAGED TABLE FROM HDFS PATH: 
+
+i)
+CREATE TABLE device_text (
+device_num int,
+release_dt string,
+device_name string,
+device_type string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE;
+
+LOAD DATA INPATH '/user/training/device_text' OVERWRITE INTO TABLE device_text;
+
+#Load data from local path using:
+LOAD DATA LOCAL INPATH '/home/training/device_text' OVERWRITE INTO TABLE device_text;
+
+ii)
+CREATE TABLE base (
+station_num int,
+zipcode string,
+city string,
+state string,
+latitude float,
+longitude float)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE;
+
+LOAD DATA INPATH '/user/training/base' OVERWRITE INTO TABLE base;
+
+dfs -ls /user/hive/warehouse/base;
+
+2) CREATE MANAGED TABLE FROM HIVE TABLE:
+
+CREATE TABLE device_text_1 (
+device_num int,
+release_dt string,
+device_name string,
+device_type string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE;
+
+INSERT INTO TABLE device_text_1 
+SELECT * FROM device_text;                     
+
+OR
+
+INSERT OVERWRITE TABLE device_text_1
+SELECT * FROM device_text;
+
+dfs -ls /user/hive/warehouse/device_text_1;
+
+
+3) CREATE EXTERNAL TABLE FROM HIVE TABLE: 
+
+CREATE EXTERNAL TABLE device_text_2 (
+device_num int,
+release_dt string,
+device_name string,
+device_type string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE
+LOCATION '/user/hive/warehouse/device_text_1';
+
+4) CREATE EXTERNAL TABLE FROM HDFS PATH:  
+
+hdfs dfs -put device_text .
+hdfs dfs -ls /user/training
+
+CREATE EXTERNAL TABLE device2 (
+device_num int,
+release_dt string,
+device_name string,
+device_type string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE
+LOCATION '/user/training/device_text';
+
+select * from device2 limit 10;
+describe formatted device2;
+
+5) CREATE STATIC-PARTITIONED-MANAGED TABLE FROM HIVE TABLE:   
+
+i)
+CREATE TABLE device_text3 (
+device_name string,
+release_dt string,
+device_type string)
+PARTITIONED BY (device_num int)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE;
+
+ALTER TABLE device_text3 ADD PARTITION (device_num=1);
+
+INSERT INTO TABLE device_text3 PARTITION (device_num=1)
+SELECT device_name, release_dt, device_type FROM device_text 
+where device_num like 1;
+
+select * from device_text3;
+dfs -ls /user/hive/warehouse/device_text3;
+
+
+ii)
+CREATE TABLE device_text_copy (
+device_num int,
+device_name string,
+release_dt string,
+device_type string)
+PARTITIONED BY (d_name string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE;
+
+ALTER TABLE device_text_copy
+ADD PARTITION (d_name='Titanic');
+
+dfs -ls -R /user/hive/warehouse/device_text_copy;
+drop table device_text_copy;
+
+INSERT INTO TABLE device_text_copy PARTITION (d_name='Titanic')
+SELECT device_num, device_name, release_dt, device_type FROM device_text
+WHERE substr(device_name, 1, 7) LIKE 'Titanic';
+
+select * from device_text_copy;
+dfs -ls /user/hive/warehouse/device_text_copy;
+dfs -cat /user/hive/warehouse/device_text_copy/device_name=Titanic/000*;
+
+6) CREATE DYNAMIC-PARTITIONED-MANAGED TABLE FROM HIVE TABLE:  
+
+i)
+CREATE TABLE device_text4_dy (
+device_num int,
+release_dt string,
+device_type string)
+PARTITIONED BY (device_name string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE;
+
+set hive.exec.dynamic.partition.mode = non-strict;
+set hive.exec.dynamic.partitions.pernode = 5000;
+
+INSERT INTO TABLE device_text4_dy PARTITION (device_name)
+SELECT device_num, release_dt, device_type, device_name from device_text; 
+
+hive> select * from device_text4_dy;
+dfs -ls /user/hive/warehouse/device_text4_dy;
+
+ii)
+CREATE TABLE device_text_copy_dynamic (
+device_num int,
+device_name string,
+release_dt string,
+device_type string)
+PARTITIONED BY (date string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE;
+
+set hive.exec.dynamic.partition.mode = non-strict;
+set hive.exec.max.dynamic.partitions.pernode = 5000;
+
+insert into table device_text_copy_dynamic partition (date) 
+select device_num, device_name, release_dt, device_type,
+substr(release_dt, 6, 5) date from device_text;    
+
+dfs -ls -R /user/hive/warehouse/device_text_copy_dynamic;
+#drop table device_text_copy_dynamic;
+
+select * from device_text_copy_dynamic limit 5;
+
+7) CREATE STATIC-PARTITIONED-EXTERNAL TABLE FROM HIVE TABLE:   
+i)
+CREATE EXTERNAL TABLE base_static_external (
+station_num int,
+zipcode string,
+city string,
+latitude float,
+longitude float)
+PARTITIONED BY (state string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE;
+
+ALTER TABLE base_static_external ADD PARTITION (state='AZ'); 
+
+INSERT INTO TABLE base_static_external PARTITION (state='AZ') 
+SELECT station_num, zipcode, city, latitude, longitude FROM base
+WHERE state='AZ';
+
+select * from base_static_external limit 5;
+dfs -ls /user/hive/warehouse/base_static_external;
+
+8) CREATE DYNAMIC-PARTITIONED-EXTERNAL TABLE FROM HIVE TABLE:   
+i)
+create external table base_dynamic_external (
+station_num int,
+zipcode string,
+city string,
+latitude float,
+longitude float)
+partitioned by (state string)
+row format delimited fields terminated by ','
+stored as textfile;
+
+set hive.exec.dynamic.partition.mode = non-strict;
+set hive.exec.max.dynamic.partitions.pernode = 5000;
+
+insert into table base_dynamic_external partition (state)			
+select station_num, zipcode, city, latitude, longitude, state from base;
+
+select * from base_dynamic_external limit 5;
+dfs -ls /user/hive/warehouse/base_dynamic_external;
+
+#################################################################################################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
